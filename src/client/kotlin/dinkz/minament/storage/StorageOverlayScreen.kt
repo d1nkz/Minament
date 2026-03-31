@@ -71,6 +71,8 @@ class StorageOverlayScreen : Screen(Component.literal("Storage Overview")) {
         }
     }
 
+
+
     override fun mouseScrolled(mouseX: Double, mouseY: Double, horizontalAmount: Double, verticalAmount: Double): Boolean {
         scrollOffset = (scrollOffset - (verticalAmount * 10).toInt()).coerceAtLeast(0)
         return true
