@@ -14,7 +14,9 @@ class StorageOverlayScreen : Screen(Component.literal("Storage Overview")) {
     private var scrollOffset = 0
 
     override fun render(graphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
-        renderBackground(graphics, mouseX, mouseY, delta)
+        // Draw dark background manually instead of renderBackground
+        graphics.fill(0, 0, width, height, 0xC0000000.toInt())
+
         super.render(graphics, mouseX, mouseY, delta)
 
         val startX = (width - (columns * slotSize)) / 2
@@ -29,7 +31,7 @@ class StorageOverlayScreen : Screen(Component.literal("Storage Overview")) {
                 "No storage data yet. Open your ender chest first.",
                 width / 2,
                 height / 2,
-                0xAAAAAA
+                0xFFFFFF
             )
             return
         }

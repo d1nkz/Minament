@@ -27,16 +27,16 @@ object StorageListener {
     }
 
     private fun detectStoragePage(title: String): Int? {
-        // Ender chest pages: "Ender Chest (Page 1/9)" etc
-        val enderChestRegex = Regex("Ender Chest \\(Page (\\d+)/\\d+\\)")
+        // Hypixel format: "Ender Chest (1/9)"
+        val enderChestRegex = Regex("Ender Chest \\((\\d+)/(\\d+)\\)")
         enderChestRegex.find(title)?.let {
             return it.groupValues[1].toIntOrNull()?.minus(1)
         }
 
-        // Backpack pages: "Backpack (Slot 1)" etc
-        val backpackRegex = Regex(".*Backpack.*\\((Slot|Page) (\\d+)\\)")
+        // Backpack format: "Backpack (Slot 1)" or similar
+        val backpackRegex = Regex(".+Backpack.+\\((\\d+)/(\\d+)\\)")
         backpackRegex.find(title)?.let {
-            return it.groupValues[2].toIntOrNull()?.plus(100)
+            return it.groupValues[1].toIntOrNull()?.plus(100)
         }
 
         return null
