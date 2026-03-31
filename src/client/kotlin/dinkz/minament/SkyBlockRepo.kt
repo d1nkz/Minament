@@ -1,45 +1,72 @@
 package dinkz.minament
 
-import com.google.gson.Gson
-import com.google.gson.JsonObject
-import kotlinx.coroutines.*
+import io.github.moulberry.repo.NEURepository
+import io.github.moulberry.repo.data.NEUItem
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import net.minecraft.client.Minecraft
-import java.net.URI
+import java.nio.file.Path
 
 object SkyBlockRepo {
 
-    data class SkyBlockItem(
-        val id: String,
-        val name: String,
-        val material: String,
-    )
-
-    var items: List<SkyBlockItem> = emptyList()
+    var neuRepo: NEURepository? = null
         private set
 
-    private val gson = Gson()
+    var items: Collection<NEUItem> = emptyList()
+        private set
+
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
+    fun getRepoDir(): Path {
+        return Minecraft.getInstance().gameDirectory.toPath()
+            .resolve("config")
+            .resolve("minament")
+            .resolve("repo")
+    }
 
     fun init() {
         scope.launch {
             try {
-                val url = URI("https://api.hypixel.net/v2/resources/skyblock/items").toURL()
-                val text = url.readText()
-                val json = gson.fromJson(text, JsonObject::class.java)
-                val itemsArray = json.getAsJsonArray("items")
-                items = itemsArray.map { el ->
-                    val obj = el.asJsonObject
-                    SkyBlockItem(
-                        id = obj.get("id")?.asString ?: "",
-                        name = obj.get("name")?.asString ?: "Unknown",
-                        material = obj.get("material")?.asString ?: "PAPER",
-                    )
-                }.filter { it.id.isNotBlank() }
+                val repoDir = getRepoDir().toFile()
+                repoDir.mkdirs()
+
+                // Clone or update the NEU repo
+                val repoUrl = "https://github.com/NotEnoughUpdates/NotEnoughUpdates-REPO.git"
+                val gitDir = repoDir.resolve(".git")
+
+                if (!gitDir.exists()) {
+                    MinamentClient.logger.info("Cloning NEU repo...")
+                    Runtime.getRuntime().exec(
+                        arrayOf("git", "clone", "--depth=1", repoUrl, repoDir.absolutePath)
+                    ).waitFor()
+                } else {
+                    MinamentClient.logger.info("Updating NEU repo...")
+                    Runtime.getRuntime().exec(
+                        arrayOf("git", "-C", repoDir.absolutePath, "pull")
+                    ).waitFor()
+                }
+
+                val repo = NEURepository.of(repoDir.toPath())
+                repo.reload()
+                neuRepo = repo
+                items = repo.items?.items?.values ?: emptyList()
+
                 Minecraft.getInstance().execute {
-                    MinamentClient.logger.info("Loaded ${items.size} SkyBlock items")
+                    MinamentClient.logger.info("Loaded ${items.size} NEU items")
+                    try {
+                        val entryRegistry = Class.forName("me.shedaniel.rei.api.client.registry.entry.EntryRegistry")
+                        val getInstance = entryRegistry.getMethod("getInstance")
+                        val instance = getInstance.invoke(null)
+                        val refilter = entryRegistry.getMethod("refilter")
+                        refilter.invoke(instance)
+                    } catch (e: Exception) {
+                        MinamentClient.logger.warn("REI reload failed: ${e.message}")
+                    }
                 }
             } catch (e: Exception) {
-                MinamentClient.logger.error("Failed to fetch SkyBlock items", e)
+                MinamentClient.logger.error("Failed to load NEU repo", e)
             }
         }
     }
